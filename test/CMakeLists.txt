@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-# © 2021-2025. Triad National Security, LLC. All rights reserved.  This program
+# © 2021-2026. Triad National Security, LLC. All rights reserved.  This program
 # was produced under U.S. Government contract 89233218CNA000001 for Los Alamos
 # National Laboratory (LANL), which is operated by Triad National Security, LLC
 # for the U.S.  Department of Energy/National Nuclear Security Administration.
@@ -26,9 +26,11 @@ add_executable(
   test_eos_vinet.cpp
   test_eos_mgusup.cpp
   test_eos_powermg.cpp
-  $<$<BOOL:${SINGULARITY_BUILD_CLOSURE}>:test_pte_ideal.cpp>
   test_eos_zsplit.cpp
   )
+if (SINGULARITY_BUILD_CLOSURE)
+  target_sources(eos_analytic_unit_tests PRIVATE test_pte_ideal.cpp)
+endif()
 
 add_executable(
   eos_infrastructure_tests
@@ -49,7 +51,7 @@ add_executable(
 
 # We want to test things like quiet NaN so finite math/fast-math needs to be disabled.
 target_compile_options(eos_infrastructure_tests PRIVATE
-  $<$<COMPILE_LANGUAGE:CXX>:-fno-fast-math;-fno-finite-math-only>
+  $<$<COMPILE_LANGUAGE:CXX,HIP>:-fno-fast-math;-fno-finite-math-only>
   $<$<COMPILE_LANGUAGE:CUDA>:--ftz=false;--prec-div=true;--prec-sqrt=true>
 )
 
@@ -132,11 +134,16 @@ if(SINGULARITY_BUILD_CLOSURE)
   catch_discover_tests(closure_unit_tests PROPERTIES TIMEOUT 120)
 
   if(SINGULARITY_USE_SPINER)
+    if(Kokkos_COMPILE_LANGUAGE STREQUAL HIP)
+      set(hip_compiler_version ${CMAKE_HIP_COMPILER_VERSION})
+    else()
+      set(hip_compiler_version ${CMAKE_CXX_COMPILER_VERSION})
+    endif()
     if(SINGULARITY_USE_KOKKOS AND Kokkos_ENABLE_HIP
-      AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.0.0")
+      AND hip_compiler_version VERSION_LESS "19.0.0")
       message(WARNING
         "Test PTE appears to encounter a compiler bug for LLVM builds targeting AMD GPUs "
-        "for compiler versions ${CMAKE_CXX_COMPILER_VERSION} < 19, and the test is disabled. "
+        "for compiler versions ${hip_compiler_version} < 19, and the test is disabled. "
         "Note this corresponds to rocm versions less than 6.4.")
     else()
       add_executable(test_pte test_pte.cpp)
@@ -253,3 +260,6 @@ if(SINGULARITY_USE_EOSPAC
     add_test(NAME Profile_EOSPAC_${MUT} COMMAND profile_eospac_${MUT} 100 16)
   endforeach()
 endif()
+
+get_property(test_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+singularity_kokkos_language(${test_targets})

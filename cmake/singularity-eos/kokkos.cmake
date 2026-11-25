@@ -19,7 +19,33 @@ endmacro()
 
 macro(singularity_find_kokkos)
   find_package(Kokkos REQUIRED)
+  # Kokkos built with Kokkos_ENABLE_COMPILE_AS_CMAKE_LANGUAGE compiles its
+  # sources as CUDA or HIP instead of CXX, and so must every source that
+  # includes Kokkos.
+  if(Kokkos_COMPILE_LANGUAGE AND NOT Kokkos_COMPILE_LANGUAGE STREQUAL CXX)
+    enable_language(${Kokkos_COMPILE_LANGUAGE})
+    set(CMAKE_${Kokkos_COMPILE_LANGUAGE}_ARCHITECTURES
+        ${Kokkos_${Kokkos_COMPILE_LANGUAGE}_ARCHITECTURES})
+  endif()
 endmacro()
+
+# Compile the C++ sources of the given targets with the Kokkos compile
+# language. Call it from the directory that defines the targets.
+function(singularity_kokkos_language)
+  if(NOT SINGULARITY_USE_KOKKOS
+     OR NOT Kokkos_COMPILE_LANGUAGE
+     OR Kokkos_COMPILE_LANGUAGE STREQUAL CXX)
+    return()
+  endif()
+  foreach(target IN LISTS ARGN)
+    get_target_property(srcs ${target} SOURCES)
+    list(FILTER srcs INCLUDE REGEX "\\.(cc|cpp|cxx)$")
+    if(srcs)
+      set_source_files_properties(${srcs} PROPERTIES LANGUAGE
+                                                     ${Kokkos_COMPILE_LANGUAGE})
+    endif()
+  endforeach()
+endfunction()
 
 macro(singularity_enable_kokkos target)
 
