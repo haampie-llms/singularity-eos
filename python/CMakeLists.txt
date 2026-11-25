@@ -18,6 +18,7 @@ pybind11_add_module(singularity_eos
   modifier_bilinear_ramp.cpp
 )
 target_link_libraries(singularity_eos PRIVATE singularity-eos_Interface)
+singularity_kokkos_language(singularity_eos)
 
 include(GNUInstallDirs)
 

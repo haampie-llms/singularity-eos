@@ -586,6 +586,7 @@ if(SINGULARITY_BUILD_CLOSURE)
     target_link_libraries(singularity-eos INTERFACE singularity-eos_Library)
     target_sources(singularity-eos_Library PRIVATE ${eos_srcs})
     message(VERBOSE "EOS Library Sources:\n\t${eos_srcs}")
+    singularity_kokkos_language(singularity-eos_Library)
   endif()
 endif()
 
